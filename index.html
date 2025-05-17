@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Clicker Game</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      text-align: center;
+      background: linear-gradient(to right, #74ebd5, #acb6e5);
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      margin-top: 30px;
+      font-size: 48px;
+      color: #333;
+    }
+    .button {
+      padding: 15px 30px;
+      font-size: 18px;
+      margin: 10px;
+      cursor: pointer;
+      border: none;
+      border-radius: 10px;
+      background-color: #4CAF50;
+      color: white;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+    .button:hover {
+      background-color: #45a049;
+      transform: scale(1.05);
+    }
+    .panel {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+      padding: 30px;
+      margin: 30px auto;
+      width: 350px;
+      display: none;
+    }
+    .leaderboard {
+      text-align: left;
+    }
+    .nav-buttons {
+      margin: 20px;
+    }
+    .nav-buttons .button {
+      background-color: #007BFF;
+    }
+    .nav-buttons .button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h1>Clicker Game</h1>
+
+  <div class="nav-buttons">
+    <button class="button" onclick="showPanel('clickPanel')">Click</button>
+    <button class="button" onclick="showPanel('upgradePanel')">Upgrades</button>
+    <button class="button" onclick="showPanel('savePanel')">Save/Load</button>
+    <button class="button" onclick="showPanel('leaderboardPanel')">Leaderboard</button>
+  </div>
+
+  <div id="clickPanel" class="panel">
+    <h2>Score: <span id="score">0</span></h2>
+    <button class="button" onclick="addClick()">Click Me!</button>
+  </div>
+
+  <div id="upgradePanel" class="panel">
+    <h3>Upgrades</h3>
+    <button class="button" onclick="buyUpgrade(1)">Upgrade 1 (Cost: <span id="upgradeCost1">10</span>)</button><br />
+    <button class="button" onclick="buyUpgrade(2)">Upgrade 2 (Cost: <span id="upgradeCost2">50</span>)</button><br />
+    <button class="button" onclick="buyUpgrade(3)">Upgrade 3 (Cost: <span id="upgradeCost3">200</span>)</button>
+    <p>Points per click: <span id="pointsPerClick">1</span></p>
+  </div>
+
+  <div id="savePanel" class="panel">
+    <h3>Save / Load</h3>
+    <button class="button" onclick="saveGame()">Save</button>
+    <button class="button" onclick="loadGame()">Load</button>
+  </div>
+
+  <div id="leaderboardPanel" class="panel leaderboard">
+    <h3>Leaderboard</h3>
+    <ol id="leaderboard"></ol>
+  </div>
+
+  <script>
+    let score = 0;
+    let pointsPerClick = 1;
+
+    // Dummy null at index 0 so upgrades 1,2,3 map nicely to array indices
+    let upgradeCosts = [null, 10, 50, 200];
+
+    let playerName = localStorage.getItem("playerName") || prompt("Enter your name:") || "Player";
+    localStorage.setItem("playerName", playerName);
+
+    let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+
+    function addClick() {
+      score += pointsPerClick;
+      updateDisplay();
+      updateLeaderboardAuto();
+    }
+
+    function buyUpgrade(level) {
+      if (score >= upgradeCosts[level]) {
+        score -= upgradeCosts[level];
+        pointsPerClick += level; // Upgrade adds 'level' points per click
+        upgradeCosts[level] = Math.floor(upgradeCosts[level] * 1.75);
+        updateDisplay();
+        updateLeaderboardAuto();
+      } else {
+        alert("Not enough score for upgrade!");
+      }
+    }
+
+    function updateDisplay() {
+      document.getElementById("score").textContent = score;
+      document.getElementById("pointsPerClick").textContent = pointsPerClick;
+      document.getElementById("upgradeCost1").textContent = upgradeCosts[1];
+      document.getElementById("upgradeCost2").textContent = upgradeCosts[2];
+      document.getElementById("upgradeCost3").textContent = upgradeCosts[3];
+    }
+
+    function saveGame() {
+      const saveData = { score, pointsPerClick, upgradeCosts, playerName };
+      localStorage.setItem("clickerSave", JSON.stringify(saveData));
+      alert("Game saved!");
+    }
+
+    function loadGame() {
+      const saveData = JSON.parse(localStorage.getItem("clickerSave"));
+      if (saveData) {
+        score = saveData.score || 0;
+        pointsPerClick = saveData.pointsPerClick || 1;
+        upgradeCosts = saveData.upgradeCosts;
+        if (!Array.isArray(upgradeCosts) || upgradeCosts.length < 4) {
+          upgradeCosts = [null, 10, 50, 200];
+        }
+        playerName = saveData.playerName || playerName;
+        localStorage.setItem("playerName", playerName);
+        updateDisplay();
+        updateLeaderboardAuto();
+        alert("Game loaded!");
+      } else {
+        alert("No save data found.");
+      }
+    }
+
+    function updateLeaderboardAuto() {
+      leaderboard = leaderboard.filter(entry => entry.name !== playerName);
+      leaderboard.push({ name: playerName, score });
+      leaderboard.sort((a, b) => b.score - a.score);
+      leaderboard = leaderboard.slice(0, 10);
+      localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+      updateLeaderboard();
+    }
+
+    function updateLeaderboard() {
+      const lbElem = document.getElementById("leaderboard");
+      lbElem.innerHTML = "";
+      leaderboard.forEach(entry => {
+        const li = document.createElement("li");
+        li.textContent = `${entry.name}: ${entry.score}`;
+        lbElem.appendChild(li);
+      });
+    }
+
+    function showPanel(panelId) {
+      const panels = document.querySelectorAll(".panel");
+      panels.forEach(p => (p.style.display = "none"));
+      document.getElementById(panelId).style.display = "block";
+    }
+
+    // Initial setup
+    loadGame();
+    updateDisplay();
+    updateLeaderboardAuto();
+    showPanel("clickPanel");
+  </script>
+</body>
+</html>
